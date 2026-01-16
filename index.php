@@ -134,7 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['forgot_password'])) {
             <div class="col-md-8 col-lg-6">
                 <div class="login-card">
                     <div class="login-header">
-                        <img src="https://arsi.edu.et/wp-content/uploads/2020/10/Arsi-Logo.png" alt="Arsi University Logo" class="logo">
+                        <img src="/images/arsi_logo.png" alt="Arsi University Logo" class="logo">
                         <h3>Final Year Project Management System</h3>
                         <p class="mb-0">College of Business and Economics</p>
                     </div>
