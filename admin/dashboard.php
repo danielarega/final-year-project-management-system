@@ -97,6 +97,11 @@ $stats = $userManager->getUserStatistics($user['department_id']);
                     </a>
                 </li>
                 <li class="nav-item">
+    <a class="nav-link" href="supervisor_assignment.php">
+        <i class="fas fa-user-tie me-2"></i> Supervisor Assignment
+    </a>
+</li>
+                <li class="nav-item">
                     <a class="nav-link" href="students.php">
                         <i class="fas fa-user-graduate me-2"></i> Students
                     </a>

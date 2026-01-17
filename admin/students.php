@@ -107,6 +107,11 @@ if (isset($_GET['success'])) {
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
 </head>
 <body>
+    <li class="nav-item">
+    <a class="nav-link" href="supervisor_assignment.php">
+        <i class="fas fa-user-tie me-2"></i> Supervisor Assignment
+    </a>
+</li>
     <!-- Include your sidebar here (similar to batches.php) -->
     <?php include 'dashboard.php'; ?>
     

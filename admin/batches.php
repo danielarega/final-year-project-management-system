@@ -171,6 +171,11 @@ if (isset($_GET['success'])) {
                     </a>
                 </li>
                 <li class="nav-item">
+    <a class="nav-link" href="supervisor_assignment.php">
+        <i class="fas fa-user-tie me-2"></i> Supervisor Assignment
+    </a>
+</li>
+                <li class="nav-item">
                     <a class="nav-link active" href="batches.php">
                         <i class="fas fa-calendar-alt me-2"></i> Batches
                     </a>

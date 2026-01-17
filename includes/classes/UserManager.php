@@ -1,4 +1,3 @@
-<!-- includes/classes/UserManager.php -->
 <?php
 class UserManager {
     private $db;
@@ -38,69 +37,148 @@ class UserManager {
         
         return ['success' => false, 'message' => 'Failed to create Department Head'];
     }
-    
+    /**
+ * Add teacher specialization
+ */
+public function addTeacherSpecialization($teacherId, $specialization, $level) {
+    try {
+        // Check if specialization already exists for this teacher
+        $checkQuery = "SELECT id FROM teacher_specializations 
+                      WHERE teacher_id = :teacher_id 
+                      AND LOWER(specialization) = LOWER(:specialization)";
+        
+        $checkStmt = $this->db->prepare($checkQuery);
+        $checkStmt->execute([
+            ':teacher_id' => $teacherId,
+            ':specialization' => $specialization
+        ]);
+        
+        if ($checkStmt->fetch()) {
+            return ['success' => false, 'message' => 'This specialization already exists for this teacher'];
+        }
+        
+        $query = "INSERT INTO teacher_specializations (teacher_id, specialization, level) 
+                 VALUES (:teacher_id, :specialization, :level)";
+        
+        $stmt = $this->db->prepare($query);
+        $result = $stmt->execute([
+            ':teacher_id' => $teacherId,
+            ':specialization' => $specialization,
+            ':level' => $level
+        ]);
+        
+        if ($result) {
+            return ['success' => true, 'message' => 'Specialization added successfully'];
+        }
+        
+        return ['success' => false, 'message' => 'Failed to add specialization'];
+        
+    } catch (PDOException $e) {
+        return ['success' => false, 'message' => 'Database error: ' . $e->getMessage()];
+    }
+}
+
+/**
+ * Get teacher specializations
+ */
+public function getTeacherSpecializations($teacherId) {
+    try {
+        $query = "SELECT * FROM teacher_specializations 
+                 WHERE teacher_id = :teacher_id 
+                 ORDER BY level DESC, specialization";
+        
+        $stmt = $this->db->prepare($query);
+        $stmt->execute([':teacher_id' => $teacherId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+    } catch (PDOException $e) {
+        error_log("Error fetching teacher specializations: " . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * Get teacher current load
+ */
+public function getTeacherCurrentLoad($teacherId) {
+    try {
+        $query = "SELECT COUNT(*) as count FROM projects 
+                 WHERE supervisor_id = :teacher_id 
+                 AND status IN ('approved', 'in_progress')";
+        
+        $stmt = $this->db->prepare($query);
+        $stmt->execute([':teacher_id' => $teacherId]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        return $result['count'] ?? 0;
+        
+    } catch (PDOException $e) {
+        error_log("Error fetching teacher current load: " . $e->getMessage());
+        return 0;
+    }
+}
     // Admin functions
     public function createTeacher($data) {
-        // Check if teacher ID already exists
-        $checkQuery = "SELECT id FROM teachers WHERE teacher_id = :teacher_id OR email = :email";
-        $checkStmt = $this->db->prepare($checkQuery);
-        $checkStmt->execute([':teacher_id' => $data['teacher_id'], ':email' => $data['email']]);
-        
-        if ($checkStmt->fetch()) {
-            return ['success' => false, 'message' => 'Teacher ID or email already exists'];
-        }
-        
-        $query = "INSERT INTO teachers (teacher_id, password, full_name, email, department_id, created_by) 
-                  VALUES (:teacher_id, :password, :full_name, :email, :department_id, :created_by)";
-        
-        $stmt = $this->db->prepare($query);
-        $result = $stmt->execute([
-            ':teacher_id' => $data['teacher_id'],
-            ':password' => password_hash($data['password'], PASSWORD_BCRYPT),
-            ':full_name' => $data['full_name'],
-            ':email' => $data['email'],
-            ':department_id' => $data['department_id'],
-            ':created_by' => $data['created_by']
-        ]);
-        
-        if ($result) {
-            return ['success' => true, 'message' => 'Teacher created successfully', 'id' => $this->db->lastInsertId()];
-        }
-        
-        return ['success' => false, 'message' => 'Failed to create teacher'];
+    
+    $checkQuery = "SELECT id FROM teachers WHERE username = :username OR email = :email";
+    $checkStmt = $this->db->prepare($checkQuery);
+    $checkStmt->execute([':username' => $data['username'], ':email' => $data['email']]);
+    
+    if ($checkStmt->fetch()) {
+        return ['success' => false, 'message' => 'Username or email already exists'];
     }
     
-    public function createStudent($data) {
-        // Check if student ID already exists
-        $checkQuery = "SELECT id FROM students WHERE student_id = :student_id OR email = :email";
-        $checkStmt = $this->db->prepare($checkQuery);
-        $checkStmt->execute([':student_id' => $data['student_id'], ':email' => $data['email']]);
-        
-        if ($checkStmt->fetch()) {
-            return ['success' => false, 'message' => 'Student ID or email already exists'];
-        }
-        
-        $query = "INSERT INTO students (student_id, password, full_name, email, department_id, batch_id, created_by) 
-                  VALUES (:student_id, :password, :full_name, :email, :department_id, :batch_id, :created_by)";
-        
-        $stmt = $this->db->prepare($query);
-        $result = $stmt->execute([
-            ':student_id' => $data['student_id'],
-            ':password' => password_hash($data['password'], PASSWORD_BCRYPT),
-            ':full_name' => $data['full_name'],
-            ':email' => $data['email'],
-            ':department_id' => $data['department_id'],
-            ':batch_id' => $data['batch_id'] ?? null,
-            ':created_by' => $data['created_by']
-        ]);
-        
-        if ($result) {
-            return ['success' => true, 'message' => 'Student created successfully', 'id' => $this->db->lastInsertId()];
-        }
-        
-        return ['success' => false, 'message' => 'Failed to create student'];
+    $query = "INSERT INTO teachers (username, password, full_name, email, department_id, max_students, created_by) 
+              VALUES (:username, :password, :full_name, :email, :department_id, :max_students, :created_by)";
+    
+    $stmt = $this->db->prepare($query);
+    $result = $stmt->execute([
+        ':username' => $data['username'],
+        ':password' => password_hash($data['password'], PASSWORD_BCRYPT),
+        ':full_name' => $data['full_name'],
+        ':email' => $data['email'],
+        ':department_id' => $data['department_id'],
+        ':max_students' => $data['max_students'] ?? 5,
+        ':created_by' => $data['created_by']
+    ]);
+    
+    if ($result) {
+        return ['success' => true, 'message' => 'Teacher created successfully', 'id' => $this->db->lastInsertId()];
     }
     
+    return ['success' => false, 'message' => 'Failed to create teacher'];
+}
+    
+   public function createStudent($data) {
+    // Check if username or email already exists
+    $checkQuery = "SELECT id FROM students WHERE username = :username OR email = :email";
+    $checkStmt = $this->db->prepare($checkQuery);
+    $checkStmt->execute([':username' => $data['username'], ':email' => $data['email']]);
+    
+    if ($checkStmt->fetch()) {
+        return ['success' => false, 'message' => 'Username or email already exists'];
+    }
+    
+    $query = "INSERT INTO students (username, password, full_name, email, department_id, batch_id, created_by) 
+              VALUES (:username, :password, :full_name, :email, :department_id, :batch_id, :created_by)";
+    
+    $stmt = $this->db->prepare($query);
+    $result = $stmt->execute([
+        ':username' => $data['username'],
+        ':password' => password_hash($data['password'], PASSWORD_BCRYPT),
+        ':full_name' => $data['full_name'],
+        ':email' => $data['email'],
+        ':department_id' => $data['department_id'],
+        ':batch_id' => $data['batch_id'] ?? null,
+        ':created_by' => $data['created_by']
+    ]);
+    
+    if ($result) {
+        return ['success' => true, 'message' => 'Student created successfully', 'id' => $this->db->lastInsertId()];
+    }
+    
+    return ['success' => false, 'message' => 'Failed to create student'];
+}
     public function bulkImportStudents($filePath, $departmentId, $batchId, $adminId) {
         // This function would parse CSV/Excel file
         // For now, we'll create a placeholder
@@ -238,4 +316,3 @@ class UserManager {
         return $stats;
     }
 }
-?>

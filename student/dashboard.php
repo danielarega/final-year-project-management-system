@@ -296,32 +296,138 @@ $user = $auth->getUser();
                 </div>
             </div>
             
-            <div class="col-md-4">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0">Supervisor Information</h5>
+            <!-- Update the Supervisor Information section in student/dashboard.php -->
+
+<?php
+require_once '../includes/classes/ProjectManager.php';
+require_once '../includes/classes/SupervisorManager.php';
+
+$projectManager = new ProjectManager();
+$project = $projectManager->getStudentProject($user['user_id'], $user['batch_id']);
+
+if ($project && $project['supervisor_id']):
+    $supervisorManager = new SupervisorManager();
+    $supervisorProjects = $supervisorManager->getTeacherProjects($project['supervisor_id']);
+    $supervisorLoad = count($supervisorProjects);
+?>
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Supervisor Information</h5>
+    </div>
+    <div class="card-body text-center">
+        <div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center mb-3" 
+             style="width: 80px; height: 80px;">
+            <i class="fas fa-user-tie fa-2x"></i>
+        </div>
+        <h5><?php echo htmlspecialchars($project['supervisor_name']); ?></h5>
+        <p class="text-muted">Your Project Supervisor</p>
+        
+        <div class="mb-3">
+            <i class="fas fa-envelope text-primary me-2"></i>
+            <small><?php echo htmlspecialchars($project['supervisor_email']); ?></small>
+        </div>
+        
+        <div class="mb-3">
+            <i class="fas fa-project-diagram text-success me-2"></i>
+            <small>Supervising <?php echo $supervisorLoad; ?> project(s)</small>
+        </div>
+        
+        <div class="mb-3">
+            <i class="fas fa-calendar-alt text-info me-2"></i>
+            <small>Assigned on: <?php echo date('M d, Y', strtotime($project['approved_at'])); ?></small>
+        </div>
+        
+        <a href="messages.php?to=<?php echo $project['supervisor_id']; ?>&type=teacher" 
+           class="btn btn-primary btn-sm">
+            <i class="fas fa-comment-dots me-2"></i> Send Message
+        </a>
+    </div>
+</div>
+<?php else: ?>
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Supervisor Information</h5>
+    </div>
+    <div class="card-body text-center">
+        <div class="rounded-circle bg-secondary text-white d-inline-flex align-items-center justify-content-center mb-3" 
+             style="width: 80px; height: 80px;">
+            <i class="fas fa-user-clock fa-2x"></i>
+        </div>
+        <h5>No Supervisor Assigned</h5>
+        <p class="text-muted">Your project supervisor will be assigned soon.</p>
+        
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i>
+            Once your title is approved, the department will assign a supervisor.
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+                <!-- Add this to student/dashboard.php after the Supervisor Information section -->
+
+<!-- Recent Notices Section -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-bullhorn me-2"></i>
+            Recent Notices
+            <?php
+            require_once '../includes/classes/NoticeManager.php';
+            $noticeManager = new NoticeManager();
+            $unreadCount = $noticeManager->getUnreadCount($user['department_id'], $user['user_id'], 'student');
+            if ($unreadCount > 0): ?>
+                <span class="badge bg-danger"><?php echo $unreadCount; ?> new</span>
+            <?php endif; ?>
+        </h5>
+    </div>
+    <div class="card-body">
+        <?php 
+        $notices = $noticeManager->getDepartmentNotices($user['department_id'], 'student', 5);
+        if (empty($notices)): ?>
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> No notices at the moment.
+            </div>
+        <?php else: ?>
+            <div class="list-group">
+                <?php foreach ($notices as $notice): 
+                    $isRead = $notice['is_read'] > 0;
+                    $priorityClass = 'notice-' . $notice['priority'];
+                ?>
+                <a href="notices.php?view=<?php echo $notice['id']; ?>" 
+                   class="list-group-item list-group-item-action <?php echo !$isRead ? 'fw-bold' : ''; ?>">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">
+                            <?php if (!$isRead): ?>
+                                <span class="badge bg-danger me-2">NEW</span>
+                            <?php endif; ?>
+                            <?php echo htmlspecialchars($notice['title']); ?>
+                        </h6>
+                        <small class="text-<?php echo $notice['priority'] === 'urgent' ? 'danger' : 'muted'; ?>">
+                            <?php echo date('M d', strtotime($notice['created_at'])); ?>
+                        </small>
                     </div>
-                    <div class="card-body text-center">
-                        <div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center mb-3" 
-                             style="width: 80px; height: 80px;">
-                            <i class="fas fa-user-tie fa-2x"></i>
-                        </div>
-                        <h5>Mr. Duressa Deksiso</h5>
-                        <p class="text-muted">MSc. in Computer Science</p>
-                        <div class="mb-3">
-                            <i class="fas fa-envelope text-primary me-2"></i>
-                            <small>duressa.deksiso@arsi.edu.et</small>
-                        </div>
-                        <div class="mb-3">
-                            <i class="fas fa-phone text-success me-2"></i>
-                            <small>+251-XXX-XXXXXX</small>
-                        </div>
-                        <a href="messages.php" class="btn btn-primary btn-sm">
-                            <i class="fas fa-comment-dots me-2"></i> Send Message
-                        </a>
-                    </div>
-                </div>
-                
+                    <p class="mb-1 small">
+                        <?php echo substr(htmlspecialchars($notice['content']), 0, 100); ?>...
+                    </p>
+                    <small>
+                        <span class="badge bg-<?php echo $notice['priority'] === 'urgent' ? 'danger' : ($notice['priority'] === 'high' ? 'warning' : 'info'); ?>">
+                            <?php echo ucfirst($notice['priority']); ?>
+                        </span>
+                        <?php if ($notice['batch_name']): ?>
+                            <span class="badge bg-secondary ms-1"><?php echo htmlspecialchars($notice['batch_name']); ?></span>
+                        <?php endif; ?>
+                    </small>
+                </a>
+                <?php endforeach; ?>
+            </div>
+            <div class="text-center mt-3">
+                <a href="notices.php" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-list"></i> View All Notices
+                </a>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
                 <div class="card mt-4">
                     <div class="card-header">
                         <h5 class="mb-0">Quick Actions</h5>

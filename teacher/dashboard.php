@@ -1,15 +1,19 @@
-<!-- teacher/dashboard.php -->
 <?php
 require_once '../includes/config/constants.php';
 require_once '../includes/classes/Database.php';
 require_once '../includes/classes/Session.php';
 require_once '../includes/classes/Auth.php';
+require_once '../includes/classes/SupervisorManager.php';  // Add this line
 
 Session::init();
 $auth = new Auth();
 $auth->requireRole(['teacher']);
 
 $user = $auth->getUser();
+
+// Initialize SupervisorManager and get assigned projects
+$supervisorManager = new SupervisorManager();
+$assignedProjects = $supervisorManager->getTeacherProjects($user['user_id']) ?? [];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -84,11 +88,7 @@ $user = $auth->getUser();
                         <i class="fas fa-tachometer-alt me-2"></i> Dashboard
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="my_students.php">
-                        <i class="fas fa-user-graduate me-2"></i> My Students
-                    </a>
-                </li>
+        
                 <li class="nav-item">
                     <a class="nav-link" href="projects.php">
                         <i class="fas fa-project-diagram me-2"></i> Projects
@@ -154,6 +154,82 @@ $user = $auth->getUser();
         
         <!-- Statistics Cards -->
         <div class="row mb-4">
+            <!-- Add this to teacher/dashboard.php in the main content area -->
+
+<!-- My Assigned Projects -->
+<!-- My Assigned Projects -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">
+            <i class="fas fa-project-diagram me-2"></i>
+            My Assigned Projects
+            <span class="badge bg-light text-dark"><?php echo count($assignedProjects); ?></span>
+        </h5>
+    </div>
+    <div class="card-body">
+        <?php if (empty($assignedProjects)): ?>
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> You don't have any assigned projects yet.
+            </div>
+        <?php else: ?>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Project Title</th>
+                            <th>Batch</th>
+                            <th>Status</th>
+                            <th>Assigned</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($assignedProjects as $project): ?>
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" 
+                                         style="width: 30px; height: 30px;">
+                                        <?php echo strtoupper(substr($project['student_name'], 0, 2)); ?>
+                                    </div>
+                                    <div>
+                                        <div><?php echo htmlspecialchars($project['student_name']); ?></div>
+                                        <small class="text-muted"><?php echo htmlspecialchars($project['student_id']); ?></small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><?php echo htmlspecialchars($project['title']); ?></td>
+                            <td>
+                                <span class="badge bg-info"><?php echo $project['batch_year']; ?></span>
+                            </td>
+                            <td>
+                                <span class="badge bg-<?php echo $project['status'] === 'approved' ? 'success' : 'warning'; ?>">
+                                    <?php echo ucfirst($project['status']); ?>
+                                </span>
+                            </td>
+                            <td>
+                                <small><?php echo date('M d, Y', strtotime($project['assignment_date'])); ?></small>
+                            </td>
+                            <td>
+                                <a href="project_details.php?id=<?php echo $project['id']; ?>" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            <div class="text-center mt-3">
+                <a href="my_projects.php" class="btn btn-primary">
+                    <i class="fas fa-list"></i> View All My Projects
+                </a>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
             <div class="col-md-3">
                 <div class="stat-card students">
                     <div class="d-flex justify-content-between align-items-center">
@@ -327,8 +403,72 @@ $user = $auth->getUser();
                         </div>
                     </div>
                 </div>
-                
-                <div class="card mt-4">
+                <!-- Add this to teacher/dashboard.php after the Upcoming Defenses section -->
+
+<!-- Recent Notices Section -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-bullhorn me-2"></i>
+            Department Notices
+            <?php
+            require_once '../includes/classes/NoticeManager.php';
+            $noticeManager = new NoticeManager();
+            
+            // FIXED: Correct parameter order - user_id first, then role, then department_id
+            $unreadCount = $noticeManager->getUnreadCount($user['user_id'], 'teacher', $user['department_id']);
+            
+            if ($unreadCount > 0): ?>
+                <span class="badge bg-danger"><?php echo $unreadCount; ?> new</span>
+            <?php endif; ?>
+        </h5>
+    </div>
+    <div class="card-body">
+        <?php 
+        // Get department notices
+        // If your getDepartmentNotices() only takes department_id:
+        $allNotices = $noticeManager->getDepartmentNotices($user['department_id']);
+        
+        // If you updated getDepartmentNotices() to accept role and limit:
+        // $notices = $noticeManager->getDepartmentNotices($user['department_id'], 'teacher', 3);
+        
+        // Simple workaround: filter and limit the notices
+        $filteredNotices = array_filter($allNotices, function($notice) {
+            // Show only notices for teachers or all users
+            return in_array($notice['user_type'], ['teacher', 'all']);
+        });
+        $notices = array_slice($filteredNotices, 0, 3); // Get first 3
+        
+        if (empty($notices)): ?>
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> No notices at the moment.
+            </div>
+        <?php else: ?>
+            <div class="list-group">
+                <?php foreach ($notices as $notice): ?>
+                <a href="notices.php?view=<?php echo $notice['id']; ?>" 
+                   class="list-group-item list-group-item-action">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1"><?php echo htmlspecialchars($notice['title']); ?></h6>
+                        <small class="text-<?php echo $notice['priority'] === 'urgent' ? 'danger' : 'muted'; ?>">
+                            <?php echo date('M d', strtotime($notice['created_at'])); ?>
+                        </small>
+                    </div>
+                    <p class="mb-1 small">
+                        <?php echo substr(htmlspecialchars($notice['content']), 0, 80); ?>...
+                    </p>
+                    <small>
+                        <span class="badge bg-<?php echo $notice['priority'] === 'urgent' ? 'danger' : ($notice['priority'] === 'high' ? 'warning' : 'info'); ?>">
+                            <?php echo ucfirst($notice['priority']); ?>
+                        </span>
+                        by <?php echo htmlspecialchars($notice['created_by_name'] ?? 'Admin'); ?>
+                    </small>
+                </a>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>       <div class="card mt-4">
                     <div class="card-header">
                         <h5 class="mb-0">Quick Links</h5>
                     </div>

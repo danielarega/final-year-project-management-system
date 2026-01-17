@@ -1,3 +1,4 @@
+<!-- admin/notices.php -->
 <?php
 require_once '../includes/config/constants.php';
 require_once '../includes/classes/Database.php';
@@ -17,7 +18,7 @@ $batchManager = new BatchManager();
 // Get batches for notice targeting
 $batches = $batchManager->getBatchesByDepartment($user['department_id']);
 
-// Get all notices for department
+// Get all notices for the department
 $notices = $noticeManager->getDepartmentNotices($user['department_id']);
 
 // Handle actions
@@ -33,11 +34,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'title' => trim($_POST['title']),
             'content' => trim($_POST['content']),
             'department_id' => $user['department_id'],
-            'batch_id' => !empty($_POST['batch_id']) ? $_POST['batch_id'] : null,
+            'batch_id' => $_POST['batch_id'] ?: null,
             'created_by' => $user['user_id'],
-            'user_type' => $_POST['user_type'] ?? 'all',
-            'priority' => $_POST['priority'] ?? 'medium',
-            'is_active' => isset($_POST['is_active']) ? 1 : 1
+            'user_type' => $_POST['user_type'],
+            'priority' => $_POST['priority'],
+            'is_active' => isset($_POST['is_active']) ? 1 : 0
         ];
         
         $result = $noticeManager->createNotice($data);
@@ -53,9 +54,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $data = [
             'title' => trim($_POST['title']),
             'content' => trim($_POST['content']),
-            'batch_id' => !empty($_POST['batch_id']) ? $_POST['batch_id'] : null,
-            'user_type' => $_POST['user_type'] ?? 'all',
-            'priority' => $_POST['priority'] ?? 'medium',
+            'batch_id' => $_POST['batch_id'] ?: null,
+            'user_type' => $_POST['user_type'],
+            'priority' => $_POST['priority'],
             'is_active' => isset($_POST['is_active']) ? 1 : 0
         ];
         
@@ -100,29 +101,27 @@ if (isset($_GET['success'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Notice Management - FYPMS</title>
+    <title>Notices Management - FYPMS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
     <style>
+        .priority-low { border-left: 3px solid #28a745; }
+        .priority-medium { border-left: 3px solid #ffc107; }
+        .priority-high { border-left: 3px solid #fd7e14; }
+        .priority-urgent { border-left: 3px solid #dc3545; }
         .notice-card {
-            border-left: 4px solid;
+            transition: transform 0.3s, box-shadow 0.3s;
             margin-bottom: 15px;
         }
-        .priority-urgent { border-left-color: #dc3545; }
-        .priority-high { border-left-color: #fd7e14; }
-        .priority-medium { border-left-color: #ffc107; }
-        .priority-low { border-left-color: #28a745; }
-        .notice-badge {
-            padding: 3px 8px;
-            border-radius: 10px;
-            font-size: 11px;
-            margin: 2px;
+        .notice-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
     </style>
 </head>
 <body>
-    <!-- Sidebar -->
+    <!-- Include admin sidebar -->
     <div class="sidebar">
         <div class="p-4">
             <h4 class="text-center">FYPMS</h4>
@@ -148,13 +147,18 @@ if (isset($_GET['success'])) {
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="assign_supervisor.php">
-                        <i class="fas fa-user-tie me-2"></i> Assign Supervisor
-                    </a>
-                </li>
+    <a class="nav-link" href="supervisor_assignment.php">
+        <i class="fas fa-user-tie me-2"></i> Supervisor Assignment
+    </a>
+</li>
                 <li class="nav-item">
                     <a class="nav-link active" href="notices.php">
                         <i class="fas fa-bullhorn me-2"></i> Notices
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="reports.php">
+                        <i class="fas fa-chart-bar me-2"></i> Reports
                     </a>
                 </li>
                 <li class="nav-item">
@@ -170,10 +174,10 @@ if (isset($_GET['success'])) {
         <!-- Header -->
         <nav class="navbar navbar-light bg-light mb-4 rounded">
             <div class="container-fluid">
-                <h3 class="mb-0">Notice Management</h3>
+                <h3 class="mb-0">Notices Management</h3>
                 <div>
                     <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createNoticeModal">
-                        <i class="fas fa-plus-circle"></i> Create Notice
+                        <i class="fas fa-plus-circle"></i> Post Notice
                     </button>
                 </div>
             </div>
@@ -194,85 +198,150 @@ if (isset($_GET['success'])) {
             </div>
         <?php endif; ?>
         
+        <!-- Statistics -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h3><?php echo count($notices); ?></h3>
+                                <h6>Total Notices</h6>
+                            </div>
+                            <i class="fas fa-bullhorn fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <?php 
+                $activeNotices = array_reduce($notices, function($carry, $notice) {
+                    return $carry + ($notice['is_active'] ? 1 : 0);
+                }, 0);
+                ?>
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h3><?php echo $activeNotices; ?></h3>
+                                <h6>Active Notices</h6>
+                            </div>
+                            <i class="fas fa-eye fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <?php 
+                $urgentNotices = array_reduce($notices, function($carry, $notice) {
+                    return $carry + ($notice['priority'] === 'urgent' ? 1 : 0);
+                }, 0);
+                ?>
+                <div class="card bg-danger text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h3><?php echo $urgentNotices; ?></h3>
+                                <h6>Urgent Notices</h6>
+                            </div>
+                            <i class="fas fa-exclamation-triangle fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <?php 
+                $batchNotices = array_reduce($notices, function($carry, $notice) {
+                    return $carry + ($notice['batch_id'] ? 1 : 0);
+                }, 0);
+                ?>
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h3><?php echo $batchNotices; ?></h3>
+                                <h6>Batch Specific</h6>
+                            </div>
+                            <i class="fas fa-calendar-alt fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- Notices List -->
         <div class="card">
             <div class="card-header">
-                <h5 class="mb-0">All Notices (<?php echo count($notices); ?>)</h5>
+                <h5 class="mb-0">All Notices</h5>
             </div>
             <div class="card-body">
                 <?php if (empty($notices)): ?>
-                    <div class="alert alert-info text-center">
-                        <i class="fas fa-info-circle fa-2x mb-3"></i>
-                        <h4>No Notices Yet</h4>
-                        <p>Create your first notice to share information with students and teachers.</p>
-                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createNoticeModal">
-                            <i class="fas fa-plus-circle"></i> Create First Notice
-                        </button>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> No notices posted yet.
                     </div>
                 <?php else: ?>
                     <div class="row">
-                        <?php foreach ($notices as $notice): 
-                            $priorityClass = 'priority-' . $notice['priority'];
-                            $isActive = $notice['is_active'] ? 'Active' : 'Inactive';
-                            $statusClass = $notice['is_active'] ? 'success' : 'secondary';
-                        ?>
+                        <?php foreach ($notices as $notice): ?>
                         <div class="col-md-6 mb-3">
-                            <div class="card notice-card <?php echo $priorityClass; ?>">
+                            <div class="card notice-card priority-<?php echo $notice['priority']; ?>">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-0"><?php echo htmlspecialchars($notice['title']); ?></h6>
+                                        <small class="text-muted">
+                                            Posted: <?php echo date('M d, Y h:i A', strtotime($notice['created_at'])); ?>
+                                        </small>
+                                    </div>
+                                    <div>
+                                        <span class="badge bg-<?php 
+                                            switch($notice['priority']) {
+                                                case 'urgent': echo 'danger'; break;
+                                                case 'high': echo 'warning'; break;
+                                                case 'medium': echo 'info'; break;
+                                                default: echo 'success';
+                                            }
+                                        ?>">
+                                            <?php echo ucfirst($notice['priority']); ?>
+                                        </span>
+                                        <span class="badge bg-<?php echo $notice['is_active'] ? 'success' : 'secondary'; ?>">
+                                            <?php echo $notice['is_active'] ? 'Active' : 'Inactive'; ?>
+                                        </span>
+                                    </div>
+                                </div>
                                 <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <p class="card-text"><?php echo nl2br(htmlspecialchars(substr($notice['content'], 0, 200))); ?>...</p>
+                                    <div class="d-flex justify-content-between align-items-center">
                                         <div>
-                                            <h5 class="card-title"><?php echo htmlspecialchars($notice['title']); ?></h5>
-                                            <div class="mb-2">
-                                                <span class="badge bg-<?php echo $statusClass; ?>">
-                                                    <?php echo $isActive; ?>
-                                                </span>
-                                                <span class="badge bg-<?php echo $notice['priority'] === 'urgent' ? 'danger' : ($notice['priority'] === 'high' ? 'warning' : ($notice['priority'] === 'medium' ? 'info' : 'success')); ?>">
-                                                    <?php echo ucfirst($notice['priority']); ?>
-                                                </span>
+                                            <small class="text-muted">
+                                                <i class="fas fa-users"></i> 
+                                                <?php 
+                                                switch($notice['user_type']) {
+                                                    case 'all': echo 'All Users'; break;
+                                                    case 'teacher': echo 'Teachers Only'; break;
+                                                    default: echo ucfirst($notice['user_type']); break;
+                                                }
+                                                ?>
                                                 <?php if ($notice['batch_name']): ?>
-                                                    <span class="badge bg-primary">
-                                                        <?php echo htmlspecialchars($notice['batch_name']); ?>
-                                                    </span>
+                                                    | <i class="fas fa-calendar"></i> <?php echo htmlspecialchars($notice['batch_name']); ?>
                                                 <?php endif; ?>
-                                            </div>
+                                            </small>
                                         </div>
                                         <div class="btn-group btn-group-sm">
                                             <button class="btn btn-outline-info" data-bs-toggle="modal" 
                                                     data-bs-target="#viewNoticeModal"
-                                                    data-title="<?php echo htmlspecialchars($notice['title']); ?>"
-                                                    data-content="<?php echo htmlspecialchars($notice['content']); ?>"
-                                                    data-priority="<?php echo $notice['priority']; ?>"
-                                                    data-batch="<?php echo $notice['batch_name'] ? htmlspecialchars($notice['batch_name']) : 'All Batches'; ?>"
-                                                    data-created="<?php echo date('M d, Y h:i A', strtotime($notice['created_at'])); ?>"
-                                                    data-created-by="<?php echo htmlspecialchars($notice['created_by_name']); ?>">
+                                                    data-notice-id="<?php echo $notice['id']; ?>">
                                                 <i class="fas fa-eye"></i>
                                             </button>
                                             <a href="notices.php?action=edit&id=<?php echo $notice['id']; ?>" 
-                                               class="btn btn-outline-primary">
+                                               class="btn btn-outline-warning">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            <button type="button" class="btn btn-outline-danger" 
-                                                    data-bs-toggle="modal" 
+                                            <button class="btn btn-outline-danger" data-bs-toggle="modal" 
                                                     data-bs-target="#deleteNoticeModal"
                                                     data-notice-id="<?php echo $notice['id']; ?>"
                                                     data-notice-title="<?php echo htmlspecialchars($notice['title']); ?>">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </div>
-                                    </div>
-                                    <p class="card-text">
-                                        <?php echo substr(htmlspecialchars($notice['content']), 0, 150); ?>
-                                        <?php if (strlen($notice['content']) > 150): ?>...<?php endif; ?>
-                                    </p>
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <small class="text-muted">
-                                            <i class="fas fa-user"></i> <?php echo htmlspecialchars($notice['created_by_name']); ?>
-                                            | <i class="fas fa-calendar"></i> <?php echo date('M d, Y', strtotime($notice['created_at'])); ?>
-                                        </small>
-                                        <small>
-                                            <i class="fas fa-users"></i> 
-                                            <?php echo $notice['user_type'] === 'all' ? 'All Users' : ucfirst($notice['user_type']); ?>
-                                        </small>
                                     </div>
                                 </div>
                             </div>
@@ -290,24 +359,22 @@ if (isset($_GET['success'])) {
             <div class="modal-content">
                 <form method="POST" action="">
                     <div class="modal-header">
-                        <h5 class="modal-title">Create New Notice</h5>
+                        <h5 class="modal-title">Post New Notice</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
                             <label class="form-label">Title *</label>
-                            <input type="text" class="form-control" name="title" 
-                                   placeholder="Enter notice title" required>
+                            <input type="text" class="form-control" name="title" required maxlength="200">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Content *</label>
-                            <textarea class="form-control" name="content" rows="6" 
-                                      placeholder="Enter notice content..." required></textarea>
+                            <textarea class="form-control" name="content" rows="6" required></textarea>
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Priority</label>
-                                <select class="form-control" name="priority">
+                                <select class="form-control" name="priority" required>
                                     <option value="low">Low</option>
                                     <option value="medium" selected>Medium</option>
                                     <option value="high">High</option>
@@ -316,16 +383,17 @@ if (isset($_GET['success'])) {
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Target Audience</label>
-                                <select class="form-control" name="user_type">
-                                    <option value="all" selected>All Users</option>
-                                    <option value="student">Students Only</option>
+                                <select class="form-control" name="user_type" required>
+                                    <option value="all">All Users</option>
+                                    <option value="admin">Admins Only</option>
                                     <option value="teacher">Teachers Only</option>
+                                    <option value="student">Students Only</option>
                                 </select>
                             </div>
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label class="form-label">Target Batch (Optional)</label>
+                                <label class="form-label">Specific Batch (Optional)</label>
                                 <select class="form-control" name="batch_id">
                                     <option value="">All Batches</option>
                                     <?php foreach ($batches as $batch): ?>
@@ -334,7 +402,6 @@ if (isset($_GET['success'])) {
                                     </option>
                                     <?php endforeach; ?>
                                 </select>
-                                <small class="text-muted">Leave empty for all batches</small>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Status</label>
@@ -349,7 +416,7 @@ if (isset($_GET['success'])) {
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" name="create_notice" class="btn btn-primary">Create Notice</button>
+                        <button type="submit" name="create_notice" class="btn btn-primary">Post Notice</button>
                     </div>
                 </form>
             </div>
@@ -364,35 +431,8 @@ if (isset($_GET['success'])) {
                     <h5 class="modal-title">Notice Details</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label"><strong>Title</strong></label>
-                        <p id="modalNoticeTitle" class="fs-5"></p>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label"><strong>Priority</strong></label>
-                            <p id="modalNoticePriority"></p>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label"><strong>Target Batch</strong></label>
-                            <p id="modalNoticeBatch"></p>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label"><strong>Content</strong></label>
-                        <div id="modalNoticeContent" class="p-3 bg-light rounded"></div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <label class="form-label"><strong>Created By</strong></label>
-                            <p id="modalNoticeCreatedBy"></p>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label"><strong>Created On</strong></label>
-                            <p id="modalNoticeCreated"></p>
-                        </div>
-                    </div>
+                <div class="modal-body" id="noticeDetails">
+                    <!-- Will be loaded via AJAX -->
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -415,7 +455,7 @@ if (isset($_GET['success'])) {
                         <p>Are you sure you want to delete notice: <strong id="deleteNoticeTitle"></strong>?</p>
                         <div class="alert alert-warning">
                             <i class="fas fa-exclamation-triangle"></i>
-                            <strong>Warning:</strong> This action cannot be undone.
+                            This action cannot be undone.
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -427,116 +467,43 @@ if (isset($_GET['success'])) {
         </div>
     </div>
     
-    <!-- Edit Notice Modal -->
-    <?php if ($action === 'edit' && $editNotice): ?>
-    <div class="modal fade show" id="editNoticeModal" tabindex="-1" style="display: block; padding-right: 17px;">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <form method="POST" action="">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Edit Notice</h5>
-                        <a href="notices.php" class="btn-close"></a>
-                    </div>
-                    <div class="modal-body">
-                        <input type="hidden" name="notice_id" value="<?php echo $editNotice['id']; ?>">
-                        <div class="mb-3">
-                            <label class="form-label">Title *</label>
-                            <input type="text" class="form-control" name="title" 
-                                   value="<?php echo htmlspecialchars($editNotice['title']); ?>" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Content *</label>
-                            <textarea class="form-control" name="content" rows="6" required><?php echo htmlspecialchars($editNotice['content']); ?></textarea>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Priority</label>
-                                <select class="form-control" name="priority">
-                                    <option value="low" <?php echo $editNotice['priority'] === 'low' ? 'selected' : ''; ?>>Low</option>
-                                    <option value="medium" <?php echo $editNotice['priority'] === 'medium' ? 'selected' : ''; ?>>Medium</option>
-                                    <option value="high" <?php echo $editNotice['priority'] === 'high' ? 'selected' : ''; ?>>High</option>
-                                    <option value="urgent" <?php echo $editNotice['priority'] === 'urgent' ? 'selected' : ''; ?>>Urgent</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Target Audience</label>
-                                <select class="form-control" name="user_type">
-                                    <option value="all" <?php echo $editNotice['user_type'] === 'all' ? 'selected' : ''; ?>>All Users</option>
-                                    <option value="student" <?php echo $editNotice['user_type'] === 'student' ? 'selected' : ''; ?>>Students Only</option>
-                                    <option value="teacher" <?php echo $editNotice['user_type'] === 'teacher' ? 'selected' : ''; ?>>Teachers Only</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Target Batch (Optional)</label>
-                                <select class="form-control" name="batch_id">
-                                    <option value="">All Batches</option>
-                                    <?php foreach ($batches as $batch): ?>
-                                    <option value="<?php echo $batch['id']; ?>" 
-                                        <?php echo $editNotice['batch_id'] == $batch['id'] ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($batch['batch_name']); ?> - <?php echo $batch['batch_year']; ?>
-                                    </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Status</label>
-                                <div class="form-check mt-2">
-                                    <input class="form-check-input" type="checkbox" name="is_active" id="is_active_edit" 
-                                           <?php echo $editNotice['is_active'] ? 'checked' : ''; ?>>
-                                    <label class="form-check-label" for="is_active_edit">
-                                        Active (Visible to users)
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="alert alert-info">
-                            <i class="fas fa-info-circle"></i>
-                            <strong>Created:</strong> <?php echo date('M d, Y h:i A', strtotime($editNotice['created_at'])); ?> 
-                            by <?php echo htmlspecialchars($editNotice['created_by_name']); ?>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <a href="notices.php" class="btn btn-secondary">Cancel</a>
-                        <button type="submit" name="update_notice" class="btn btn-primary">Update Notice</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-    <div class="modal-backdrop fade show"></div>
-    <?php endif; ?>
-    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         $(document).ready(function() {
-            // View Notice Modal
+            // View Notice modal
             $('#viewNoticeModal').on('show.bs.modal', function(event) {
                 var button = $(event.relatedTarget);
-                $('#modalNoticeTitle').text(button.data('title'));
-                $('#modalNoticeContent').html(button.data('content').replace(/\n/g, '<br>'));
-                $('#modalNoticePriority').text(button.data('priority').charAt(0).toUpperCase() + button.data('priority').slice(1));
-                $('#modalNoticeBatch').text(button.data('batch'));
-                $('#modalNoticeCreated').text(button.data('created'));
-                $('#modalNoticeCreatedBy').text(button.data('created-by'));
+                var noticeId = button.data('notice-id');
+                
+                var modal = $(this);
+                
+                // Load notice details via AJAX
+                $.ajax({
+                    url: 'ajax_get_notice_details.php',
+                    method: 'GET',
+                    data: { notice_id: noticeId },
+                    success: function(response) {
+                        $('#noticeDetails').html(response);
+                    },
+                    error: function() {
+                        $('#noticeDetails').html(
+                            '<div class="alert alert-danger">Failed to load notice details.</div>'
+                        );
+                    }
+                });
             });
             
-            // Delete Notice Modal
+            // Delete Notice modal
             $('#deleteNoticeModal').on('show.bs.modal', function(event) {
                 var button = $(event.relatedTarget);
+                var noticeId = button.data('notice-id');
+                var noticeTitle = button.data('notice-title');
+                
                 var modal = $(this);
-                modal.find('#deleteNoticeId').val(button.data('notice-id'));
-                modal.find('#deleteNoticeTitle').text(button.data('notice-title'));
+                modal.find('#deleteNoticeId').val(noticeId);
+                modal.find('#deleteNoticeTitle').text(noticeTitle);
             });
-            
-            // Show edit modal if edit action
-            <?php if ($action === 'edit' && $editNotice): ?>
-            $(document).ready(function() {
-                $('#editNoticeModal').modal('show');
-            });
-            <?php endif; ?>
         });
     </script>
 </body>

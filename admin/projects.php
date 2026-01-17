@@ -124,6 +124,11 @@ if (isset($_GET['success'])) {
                     </a>
                 </li>
                 <li class="nav-item">
+    <a class="nav-link" href="supervisor_assignment.php">
+        <i class="fas fa-user-tie me-2"></i> Supervisor Assignment
+    </a>
+</li>
+                <li class="nav-item">
                     <a class="nav-link" href="notices.php">
                         <i class="fas fa-bullhorn me-2"></i> Notices
                     </a>
@@ -547,5 +552,197 @@ if (isset($_GET['success'])) {
             });
         });
     </script>
+    <!-- Supervisor Assignment Modal -->
+<div class="modal fade" id="assignSupervisorModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Assign Supervisor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="assignProjectId">
+                <input type="hidden" id="assignBatchId">
+                <input type="hidden" id="assignDepartmentId">
+                
+                <div class="alert alert-info" id="assignSupervisorAlert">
+                    <i class="fas fa-info-circle"></i> 
+                    Select a supervisor from the list below or use auto-assign.
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Available Supervisors</label>
+                    <div id="supervisorsList">
+                        <!-- Supervisors will be loaded here -->
+                        <div class="text-center py-3">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p>Loading available supervisors...</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="noSupervisors" style="display: none;">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        No supervisors available for this batch. Please add more teachers or check their availability.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" id="autoAssignBtn">
+                    <i class="fas fa-robot"></i> Auto Assign
+                </button>
+                <button type="button" class="btn btn-primary" id="assignSelectedBtn" disabled>
+                    <i class="fas fa-user-tie"></i> Assign Selected
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Supervisor Assignment
+let selectedSupervisorId = null;
+
+// When assign button is clicked in projects table
+$(document).on('click', '.assign-supervisor-btn', function() {
+    var projectId = $(this).data('project-id');
+    var batchId = $(this).data('batch-id');
+    var departmentId = $(this).data('department-id');
+    
+    $('#assignProjectId').val(projectId);
+    $('#assignBatchId').val(batchId);
+    $('#assignDepartmentId').val(departmentId);
+    
+    // Reset and load supervisors
+    selectedSupervisorId = null;
+    $('#assignSelectedBtn').prop('disabled', true);
+    loadAvailableSupervisors(batchId, departmentId);
+    
+    $('#assignSupervisorModal').modal('show');
+});
+
+function loadAvailableSupervisors(batchId, departmentId) {
+    $('#supervisorsList').html(`
+        <div class="text-center py-3">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Loading available supervisors...</p>
+        </div>
+    `);
+    $('#noSupervisors').hide();
+    
+    $.ajax({
+        url: 'ajax_get_available_supervisors.php',
+        method: 'GET',
+        data: {
+            batch_id: batchId,
+            department_id: departmentId
+        },
+        success: function(response) {
+            if (response.success && response.data && response.data.length > 0) {
+                let html = '';
+                response.data.forEach(function(supervisor) {
+                    html += `
+                    <div class="card mb-2 supervisor-card" data-supervisor-id="${supervisor.id}">
+                        <div class="card-body">
+                            <div class="form-check">
+                                <input class="form-check-input supervisor-radio" type="radio" 
+                                       name="supervisor" id="supervisor_${supervisor.id}" 
+                                       value="${supervisor.id}">
+                                <label class="form-check-label" for="supervisor_${supervisor.id}">
+                                    <strong>${supervisor.full_name}</strong><br>
+                                    <small class="text-muted">
+                                        Available slots: ${supervisor.available_slots} | 
+                                        Current load: ${supervisor.current_load}/${supervisor.max_students}<br>
+                                        Specializations: ${supervisor.specializations || 'None'}
+                                    </small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    `;
+                });
+                $('#supervisorsList').html(html);
+                $('#noSupervisors').hide();
+            } else {
+                $('#supervisorsList').html('');
+                $('#noSupervisors').show();
+            }
+        },
+        error: function() {
+            $('#supervisorsList').html('<div class="alert alert-danger">Error loading supervisors.</div>');
+            $('#noSupervisors').hide();
+        }
+    });
+}
+
+// When a supervisor is selected
+$(document).on('change', '.supervisor-radio', function() {
+    selectedSupervisorId = $(this).val();
+    $('#assignSelectedBtn').prop('disabled', false);
+});
+
+// Assign selected supervisor
+$('#assignSelectedBtn').click(function() {
+    if (!selectedSupervisorId) {
+        alert('Please select a supervisor');
+        return;
+    }
+    
+    const projectId = $('#assignProjectId').val();
+    const teacherId = selectedSupervisorId;
+    
+    $.ajax({
+        url: 'ajax_assign_supervisor.php',
+        method: 'POST',
+        data: {
+            project_id: projectId,
+            teacher_id: teacherId
+        },
+        success: function(response) {
+            if (response.success) {
+                alert(response.message);
+                $('#assignSupervisorModal').modal('hide');
+                location.reload(); // Reload the page to see the update
+            } else {
+                alert('Error: ' + response.message);
+            }
+        },
+        error: function() {
+            alert('Error assigning supervisor. Please try again.');
+        }
+    });
+});
+
+// Auto assign
+$('#autoAssignBtn').click(function() {
+    const projectId = $('#assignProjectId').val();
+    
+    $.ajax({
+        url: 'ajax_auto_assign_supervisor.php',
+        method: 'POST',
+        data: {
+            project_id: projectId
+        },
+        success: function(response) {
+            if (response.success) {
+                alert(response.message);
+                $('#assignSupervisorModal').modal('hide');
+                location.reload();
+            } else {
+                alert('Error: ' + response.message);
+            }
+        },
+        error: function() {
+            alert('Error auto-assigning supervisor. Please try again.');
+        }
+    });
+});
+</script>
 </body>
 </html>

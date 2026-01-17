@@ -47,3 +47,9 @@ date_default_timezone_set('Africa/Addis_Ababa');
    ========================= */
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
+// File Upload Settings
+// File Upload Settings
+define('MAX_FILE_SIZE', 50 * 1024 * 1024); // 50MB
+define('ALLOWED_TYPES', 'application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/zip,application/x-zip-compressed');
+define('UPLOAD_DIR', $_SERVER['DOCUMENT_ROOT'] . '/fypms/final-year-project-management-system/uploads/');
+define('UPLOAD_URL', 'http://localhost/fypms/final-year-project-management-system/uploads/');

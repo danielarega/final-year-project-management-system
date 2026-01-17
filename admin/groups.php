@@ -160,6 +160,11 @@ if (isset($_GET['success'])) {
                     </a>
                 </li>
                 <li class="nav-item">
+    <a class="nav-link" href="supervisor_assignment.php">
+        <i class="fas fa-user-tie me-2"></i> Supervisor Assignment
+    </a>
+</li>
+                <li class="nav-item">
                     <a class="nav-link" href="projects.php">
                         <i class="fas fa-project-diagram me-2"></i> Projects
                     </a>
