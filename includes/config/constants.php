@@ -34,8 +34,8 @@ define('SESSION_NAME', 'fypms_session');
 /* =========================
    Security Settings
    ========================= */
-define('PASSWORD_HASH_ALGO', PASSWORD_BCRYPT);
-define('PASSWORD_HASH_COST', 12);
+const PASSWORD_HASH_ALGO = PASSWORD_BCRYPT;
+const PASSWORD_HASH_COST = 12;
 
 /* =========================
    Timezone
@@ -53,3 +53,10 @@ define('MAX_FILE_SIZE', 50 * 1024 * 1024); // 50MB
 define('ALLOWED_TYPES', 'application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/zip,application/x-zip-compressed');
 define('UPLOAD_DIR', $_SERVER['DOCUMENT_ROOT'] . '/fypms/final-year-project-management-system/uploads/');
 define('UPLOAD_URL', 'http://localhost/fypms/final-year-project-management-system/uploads/');
+// CSV Import Settings
+define('MAX_CSV_SIZE', 5 * 1024 * 1024); // 5MB
+define('ALLOWED_CSV_TYPES', ['text/csv', 'text/plain', 'application/vnd.ms-excel']);
+define('IMPORT_DIR', UPLOAD_DIR . 'imports/');
+define('ARCHIVE_DIR', UPLOAD_DIR . 'archive/');
+define('ARCHIVE_URL', UPLOAD_URL . 'archive/');
+define('MAX_OCR_SIZE', 10 * 1024 * 1024); // 10MB for scanned documents

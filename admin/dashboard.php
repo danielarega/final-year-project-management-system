@@ -1,10 +1,10 @@
-<!-- admin/dashboard.php -->
 <?php
 require_once '../includes/config/constants.php';
 require_once '../includes/classes/Database.php';
 require_once '../includes/classes/Session.php';
 require_once '../includes/classes/Auth.php';
 require_once '../includes/classes/UserManager.php';
+require_once '../includes/classes/BatchManager.php'; // ADD THIS LINE
 
 Session::init();
 $auth = new Auth();
@@ -12,9 +12,26 @@ $auth->requireRole(['admin']);
 
 $user = $auth->getUser();
 $userManager = new UserManager();
+$batchManager = new BatchManager(); // ADD THIS LINE
 
 // Get department-specific statistics
 $stats = $userManager->getUserStatistics($user['department_id']);
+
+// Get advanced statistics
+$advancedStats = $batchManager->getDepartmentAdvancedStats($user['department_id']);
+
+// If advancedStats is null, initialize with default values
+if (!$advancedStats) {
+    $advancedStats = [
+        'student_count' => 0,
+        'batch_count' => 0,
+        'teacher_count' => 0,
+        'project_count' => 0,
+        'avg_department_grade' => 0,
+        'unassigned_students' => 0,
+        'completed_projects' => 0
+    ];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -92,6 +109,16 @@ $stats = $userManager->getUserStatistics($user['department_id']);
                     </a>
                 </li>
                 <li class="nav-item">
+    <a class="nav-link" href="import_students.php">
+        <i class="fas fa-file-import me-2"></i> Import Students
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link" href="department_config.php">
+        <i class="fas fa-sliders-h me-2"></i> Department Config
+    </a>
+</li>
+                <li class="nav-item">
                     <a class="nav-link" href="teachers.php">
                         <i class="fas fa-chalkboard-teacher me-2"></i> Teachers
                     </a>
@@ -156,53 +183,114 @@ $stats = $userManager->getUserStatistics($user['department_id']);
         <h2 class="mb-4">Admin Dashboard</h2>
         
         <!-- Statistics Cards -->
-        <div class="row mb-4">
-            <div class="col-md-3">
-                <div class="stat-card batch">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h2>3</h2>
+        <!-- C:\xampp\htdocs\fypms\final-year-project-management-system\admin\dashboard.php (ENHANCED VERSION) -->
+<!-- Add this section after the Statistics Cards in your existing dashboard.php -->
+
+<!-- Advanced Statistics Section -->
+<!-- Update the display section to use $advancedStats correctly -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Department Performance Dashboard</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 text-center">
+                        <div class="mb-3">
+                            <div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center" 
+                                 style="width: 80px; height: 80px;">
+                                <i class="fas fa-users fa-2x"></i>
+                            </div>
+                            <h3 class="mt-2"><?php echo $advancedStats['student_count'] ?? 0; ?></h3>
+                            <h6>Total Students</h6>
+                        </div>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <div class="mb-3">
+                            <div class="rounded-circle bg-success text-white d-inline-flex align-items-center justify-content-center" 
+                                 style="width: 80px; height: 80px;">
+                                <i class="fas fa-calendar-check fa-2x"></i>
+                            </div>
+                            <h3 class="mt-2"><?php echo $advancedStats['batch_count'] ?? 0; ?></h3>
                             <h6>Active Batches</h6>
                         </div>
-                        <i class="fas fa-calendar-alt fa-3x opacity-50"></i>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <div class="mb-3">
+                            <div class="rounded-circle bg-info text-white d-inline-flex align-items-center justify-content-center" 
+                                 style="width: 80px; height: 80px;">
+                                <i class="fas fa-project-diagram fa-2x"></i>
+                            </div>
+                            <h3 class="mt-2"><?php echo $advancedStats['project_count'] ?? 0; ?></h3>
+                            <h6>Total Projects</h6>
+                        </div>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <div class="mb-3">
+                            <div class="rounded-circle bg-warning text-white d-inline-flex align-items-center justify-content-center" 
+                                 style="width: 80px; height: 80px;">
+                                <i class="fas fa-chart-line fa-2x"></i>
+                            </div>
+                            <h3 class="mt-2">
+                                <?php 
+                                $totalProjects = $advancedStats['project_count'] ?? 0;
+                                $completedProjects = $advancedStats['completed_projects'] ?? 0;
+                                $completionRate = ($totalProjects > 0) ? 
+                                    ($completedProjects / $totalProjects * 100) : 0;
+                                echo round($completionRate, 1); ?>%
+                            </h3>
+                            <h6>Completion Rate</h6>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="col-md-3">
-                <div class="stat-card teacher">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h2><?php echo $stats['teachers']; ?></h2>
-                            <h6>Teachers</h6>
+                
+                <!-- Progress Bars -->
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Student Assignment Progress</span>
+                                <span>
+                                    <?php 
+                                    $totalStudents = $advancedStats['student_count'] ?? 0;
+                                    $unassignedStudents = $advancedStats['unassigned_students'] ?? 0;
+                                    $assignedStudents = $totalStudents - $unassignedStudents;
+                                    $assignedRate = ($totalStudents > 0) ? 
+                                        ($assignedStudents / $totalStudents * 100) : 0;
+                                    echo round($assignedRate, 1); ?>%
+                                </span>
+                            </div>
+                            <div class="progress" style="height: 15px;">
+                                <div class="progress-bar bg-success" style="width: <?php echo $assignedRate; ?>%"></div>
+                            </div>
+                            <small class="text-muted">
+                                <?php echo $assignedStudents; ?> assigned / 
+                                <?php echo $unassignedStudents; ?> unassigned
+                            </small>
                         </div>
-                        <i class="fas fa-chalkboard-teacher fa-3x opacity-50"></i>
                     </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="stat-card student">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h2><?php echo $stats['students']; ?></h2>
-                            <h6>Students</h6>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Project Completion Status</span>
+                                <span>
+                                    <?php echo $completedProjects; ?> / <?php echo $totalProjects; ?>
+                                </span>
+                            </div>
+                            <div class="progress" style="height: 15px;">
+                                <div class="progress-bar bg-info" style="width: <?php echo $completionRate; ?>%"></div>
+                            </div>
+                            <small class="text-muted">
+                                <?php echo $completedProjects; ?> completed projects
+                            </small>
                         </div>
-                        <i class="fas fa-user-graduate fa-3x opacity-50"></i>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="stat-card project">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h2>45</h2>
-                            <h6>Active Projects</h6>
-                        </div>
-                        <i class="fas fa-project-diagram fa-3x opacity-50"></i>
                     </div>
                 </div>
             </div>
         </div>
-        
+    </div>
+</div>
         <!-- Quick Actions -->
         <div class="row">
             <div class="col-md-8">

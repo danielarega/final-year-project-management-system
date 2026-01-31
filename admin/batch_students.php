@@ -60,19 +60,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $error = 'Please select at least one student';
         }
+    } elseif (isset($_POST['remove_student'])) {
+    $studentId = $_POST['remove_student_id'];
+    // Correct: Pass null to remove student from batch
+    $result = $batchManager->assignStudentToBatch($studentId, null);
+    
+    if ($result['success']) {
+        $message = 'Student removed from batch';
+        header('Location: batch_students.php?batch_id=' . $batchId . '&success=' . urlencode($message));
+        exit();
+    } else {
+        $error = $result['message'];
     }
-    elseif (isset($_POST['remove_student'])) {
-        $studentId = $_POST['remove_student_id'];
-        $result = $batchManager->assignStudentToBatch($studentId, null); // Set batch_id to null
-        
-        if ($result['success']) {
-            $message = 'Student removed from batch';
-            header('Location: batch_students.php?batch_id=' . $batchId . '&success=' . urlencode($message));
-            exit();
-        } else {
-            $error = $result['message'];
-        }
-    }
+}
 }
 
 // Show success message from redirect

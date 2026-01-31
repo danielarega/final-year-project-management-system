@@ -102,6 +102,16 @@ $stats = $userManager->getUserStatistics();
                     </a>
                 </li>
                 <li class="nav-item">
+    <a class="nav-link" href="historical_data.php">
+        <i class="fas fa-archive me-2"></i> Historical Archive
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link" href="progress_tracking.php">
+        <i class="fas fa-chart-line me-2"></i> Progress Tracking
+    </a>
+</li>
+                <li class="nav-item">
                     <a class="nav-link" href="reports.php">
                         <i class="fas fa-chart-bar me-2"></i> Reports
                     </a>

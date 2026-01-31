@@ -69,40 +69,48 @@ class DepartmentManager {
     }
     
     // Delete department
-    public function deleteDepartment($id) {
-        try {
-            // Check if department has users
-            $checkQuery = "SELECT COUNT(*) as count FROM admins WHERE department_id = :id 
-                          UNION ALL 
-                          SELECT COUNT(*) FROM teachers WHERE department_id = :id 
-                          UNION ALL 
-                          SELECT COUNT(*) FROM students WHERE department_id = :id";
-            
-            $stmt = $this->db->prepare($checkQuery);
-            $stmt->execute([':id' => $id]);
-            $results = $stmt->fetchAll(PDO::FETCH_COLUMN);
-            
-            $totalUsers = array_sum($results);
-            
-            if ($totalUsers > 0) {
-                return ['success' => false, 'message' => 'Cannot delete department with existing users'];
-            }
-            
-            $query = "DELETE FROM departments WHERE id = :id";
-            $stmt = $this->db->prepare($query);
-            $result = $stmt->execute([':id' => $id]);
-            
-            if ($result) {
-                return ['success' => true, 'message' => 'Department deleted successfully'];
-            }
-            
-            return ['success' => false, 'message' => 'Failed to delete department'];
-            
-        } catch (PDOException $e) {
-            return ['success' => false, 'message' => 'Database error: ' . $e->getMessage()];
+   // Delete department
+// Delete department (Alternative with UNION fix)
+public function deleteDepartment($id) {
+    try {
+        // Check if department has users
+        $checkQuery = "SELECT COUNT(*) as count FROM admins WHERE department_id = :dept_id1 
+                      UNION ALL 
+                      SELECT COUNT(*) FROM teachers WHERE department_id = :dept_id2 
+                      UNION ALL 
+                      SELECT COUNT(*) FROM students WHERE department_id = :dept_id3
+                      UNION ALL 
+                      SELECT COUNT(*) FROM batches WHERE department_id = :dept_id4";
+        
+        $stmt = $this->db->prepare($checkQuery);
+        $stmt->execute([
+            ':dept_id1' => $id,
+            ':dept_id2' => $id,
+            ':dept_id3' => $id,
+            ':dept_id4' => $id
+        ]);
+        $results = $stmt->fetchAll(PDO::FETCH_COLUMN, 0);
+        
+        $totalUsers = array_sum($results);
+        
+        if ($totalUsers > 0) {
+            return ['success' => false, 'message' => 'Cannot delete department with existing users, students, teachers, or batches'];
         }
+        
+        $query = "DELETE FROM departments WHERE id = :dept_id";
+        $stmt = $this->db->prepare($query);
+        $result = $stmt->execute([':dept_id' => $id]);
+        
+        if ($result) {
+            return ['success' => true, 'message' => 'Department deleted successfully'];
+        }
+        
+        return ['success' => false, 'message' => 'Failed to delete department'];
+        
+    } catch (PDOException $e) {
+        return ['success' => false, 'message' => 'Database error: ' . $e->getMessage()];
     }
-    
+}
     // Get all departments
     public function getAllDepartments($withStats = false) {
         try {

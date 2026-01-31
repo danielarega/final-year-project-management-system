@@ -10,7 +10,9 @@ $auth = new Auth();
 $auth->requireRole(['teacher']);
 
 $user = $auth->getUser();
-
+require_once '../includes/classes/UserManager.php';
+$userManager = new UserManager();
+$specializations = $userManager->getTeacherSpecializations($user['user_id']);
 // Initialize SupervisorManager and get assigned projects
 $supervisorManager = new SupervisorManager();
 $assignedProjects = $supervisorManager->getTeacherProjects($user['user_id']) ?? [];
@@ -150,6 +152,17 @@ $assignedProjects = $supervisorManager->getTeacherProjects($user['user_id']) ?? 
         <div class="alert alert-info mb-4">
             <h5><i class="fas fa-user-tie me-2"></i> Welcome, <?php echo htmlspecialchars($user['full_name']); ?></h5>
             <p class="mb-0">You are currently supervising final year projects. Check pending submissions and provide timely feedback.</p>
+            <div class="mb-2">
+    <?php if (!empty($specializations)): ?>
+        <small class="badge bg-info me-1">
+            <i class="fas fa-tag"></i> 
+            <?php echo htmlspecialchars($specializations[0]['specialization']); ?>
+        </small>
+        <?php if (count($specializations) > 1): ?>
+            <small class="text-muted">+<?php echo count($specializations)-1; ?> more</small>
+        <?php endif; ?>
+    <?php endif; ?>
+</div>
         </div>
         
         <!-- Statistics Cards -->

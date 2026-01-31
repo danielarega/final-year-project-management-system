@@ -68,16 +68,19 @@ class Auth {
                 'full_name' => $user['full_name'],
                 'email' => $user['email'],
                 'user_type' => $userType,
-                'logged_in' => true
+                'logged_in' => true,
+                  'role_id' => 0 
             ];
             
             // Add role-specific data
-            if ($userType === 'admin' || $userType === 'teacher' || $userType === 'student') {
-                $sessionData['department_id'] = $user['department_id'];
-                if ($userType === 'student') {
-                    $sessionData['batch_id'] = $user['batch_id'] ?? null;
-                }
-            }
+           if (in_array($userType, ['admin', 'teacher', 'student'])) {
+    if (isset($user['department_id'])) {
+        $sessionData['department_id'] = $user['department_id'];
+    }
+    if ($userType === 'student' && isset($user['batch_id'])) {
+        $sessionData['batch_id'] = $user['batch_id'];
+    }
+}
             
             // Start session
             Session::set('user', $sessionData);

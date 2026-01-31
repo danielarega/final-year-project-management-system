@@ -37,7 +37,7 @@ class UserManager {
         
         return ['success' => false, 'message' => 'Failed to create Department Head'];
     }
-    /**
+/**
  * Add teacher specialization
  */
 public function addTeacherSpecialization($teacherId, $specialization, $level) {
@@ -78,21 +78,16 @@ public function addTeacherSpecialization($teacherId, $specialization, $level) {
     }
 }
 
-/**
- * Get teacher specializations
- */
 public function getTeacherSpecializations($teacherId) {
     try {
         $query = "SELECT * FROM teacher_specializations 
                  WHERE teacher_id = :teacher_id 
-                 ORDER BY level DESC, specialization";
+                 ORDER BY level DESC";
         
         $stmt = $this->db->prepare($query);
         $stmt->execute([':teacher_id' => $teacherId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
     } catch (PDOException $e) {
-        error_log("Error fetching teacher specializations: " . $e->getMessage());
         return [];
     }
 }
